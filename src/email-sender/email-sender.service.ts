@@ -50,4 +50,32 @@ export class EmailSenderService {
       throw new BadRequestException('Failed to send OTP email');
     }
   }
+
+  async sendInviteLink(email: string, link: string) {
+    await this.mailerService.sendMail({
+      to: email,
+      subject: 'You are Invited to Join a Company',
+      html: `
+      <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f4;">
+        <div style="max-width: 600px; margin: auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+          <h2 style="color: #333;">You've Been Invited!</h2>
+          <p style="font-size: 16px; color: #555;">
+            A company has invited you to join their team as an employee.
+          </p>
+          <p style="font-size: 16px; color: #555;">
+            To accept the invitation and set your password, please click the button below:
+          </p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${link}" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-size: 16px;">
+              Accept Invitation
+            </a>
+          </div>
+          <p style="font-size: 14px; color: #888;">
+            This link will expire in 1 hour. If you did not expect this email, you can ignore it.
+          </p>
+        </div>
+      </div>
+    `,
+    });
+  }
 }

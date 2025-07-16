@@ -1,15 +1,25 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { Employee } from './schema/employee.schema';
 
 @Injectable()
 export class EmployeesService {
+  constructor(
+    @InjectModel('employee') private readonly employeeModel: Model<Employee>,
+  ) {}
   create(createEmployeeDto: CreateEmployeeDto) {
     return 'This action adds a new employee';
   }
 
   findAll() {
-    return `This action returns all employees`;
+    return this.employeeModel.find();
   }
 
   findOne(id: number) {

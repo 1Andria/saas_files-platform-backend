@@ -6,6 +6,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { MongooseModule } from '@nestjs/mongoose';
 import { companySchema } from 'src/company/schema/company.schema';
 import { EmailSenderModule } from 'src/email-sender/email-sender.module';
+import { EmployeeSchema } from 'src/employees/schema/employee.schema';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { EmailSenderModule } from 'src/email-sender/email-sender.module';
       secret: process.env.JWT_SECRET,
     }),
     MongooseModule.forFeature([{ schema: companySchema, name: 'company' }]),
+    MongooseModule.forFeature([{ schema: EmployeeSchema, name: 'employee' }]),
   ],
   controllers: [AuthController],
   providers: [AuthService],
