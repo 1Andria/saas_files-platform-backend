@@ -55,4 +55,9 @@ export class AuthController {
   ) {
     return this.authService.resendInviteToEmployee(companyId, employeeEmail);
   }
+
+  @Post('sign-in-employee')
+  signInEmployee(@Body() { email, password }: SignInDto) {
+    return this.authService.signInEmployee(email, password);
+  }
 }

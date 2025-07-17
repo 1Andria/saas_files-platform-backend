@@ -9,9 +9,10 @@ import {
 } from '@nestjs/common';
 import { CompanyService } from './company.service';
 import { UpdateCompanyDto } from './dto/update-company.dto';
-import { IsAuthGuard } from 'src/auth/guard/isAuth.guard';
 import { CompanyId } from './decorator/company.decorator';
 import { ChangeCompanyPasswordDto } from './dto/change-company-password.dto';
+import { IsAuthGuard } from '../auth/guard/isAuth.guard';
+import { CompanyOnlyGuard } from 'src/auth/guard/company-only.guard';
 
 @Controller('company')
 export class CompanyController {
@@ -28,7 +29,7 @@ export class CompanyController {
   }
 
   @Patch('change-password')
-  @UseGuards(IsAuthGuard)
+  @UseGuards(IsAuthGuard, CompanyOnlyGuard)
   changePassword(
     @CompanyId() companyId: string,
     @Body() dto: ChangeCompanyPasswordDto,
@@ -37,7 +38,7 @@ export class CompanyController {
   }
 
   @Patch(':id')
-  @UseGuards(IsAuthGuard)
+  @UseGuards(IsAuthGuard, CompanyOnlyGuard)
   update(
     @CompanyId() companyId: string,
     @Body() updateCompanyDto: UpdateCompanyDto,
@@ -46,7 +47,7 @@ export class CompanyController {
   }
 
   @Delete()
-  @UseGuards(IsAuthGuard)
+  @UseGuards(IsAuthGuard, CompanyOnlyGuard)
   remove(@CompanyId() companyId: string) {
     return this.companyService.remove(companyId);
   }

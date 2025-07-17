@@ -9,11 +9,13 @@ import { isValidObjectId, Model } from 'mongoose';
 import { Company } from './schema/company.schema';
 import * as bcrypt from 'bcrypt';
 import { ChangeCompanyPasswordDto } from './dto/change-company-password.dto';
+import { Employee } from 'src/employees/schema/employee.schema';
 
 @Injectable()
 export class CompanyService {
   constructor(
     @InjectModel('company') private readonly companyModel: Model<Company>,
+    @InjectModel('employee') private readonly employeeModel: Model<Employee>,
   ) {}
   findAll() {
     return this.companyModel.find();
@@ -96,4 +98,6 @@ export class CompanyService {
       deletedCompany,
     };
   }
+
+  async deleteEmployee() {}
 }

@@ -59,6 +59,7 @@ export class AuthService {
     const existCompany = await this.companyModel
       .findOne({ companyEmail: email })
       .select('companyPassword isActive');
+
     if (!existCompany) {
       throw new BadRequestException('Invalid credentials');
     }
@@ -71,11 +72,15 @@ export class AuthService {
       throw new BadRequestException('Invalid credentials');
     }
 
-    if (!existCompany.isActive) throw new BadRequestException('Verify email');
+    if (!existCompany.isActive) {
+      throw new BadRequestException('Verify email');
+    }
 
     const payLoad = {
       id: existCompany._id,
+      role: 'company',
     };
+
     const token = this.jwtService.sign(payLoad, { expiresIn: '1h' });
 
     return { token };
@@ -115,8 +120,6 @@ export class AuthService {
     if (company.OTPCode !== otpCode)
       throw new BadRequestException('invalid OTPCode provided');
 
-    // fronturl/verifyuser?token=backendToken-ამ ლინკს დააწვება გადაიყვანს verifyuser შიგნით  იქნება ინფუთი urlდან ამოვიღებ ტოკენ backendToken
-
     await this.companyModel.updateOne(
       { _id: company._id },
       {
@@ -126,6 +129,7 @@ export class AuthService {
 
     const payload = {
       id: company._id,
+      role: 'company',
     };
 
     const token = this.jwtService.sign(payload, { expiresIn: '1h' });
@@ -150,7 +154,7 @@ export class AuthService {
     });
 
     const token = this.jwtService.sign(
-      { id: employee._id },
+      { id: employee._id, role: 'employee' },
       { expiresIn: '1h' },
     );
 
@@ -183,8 +187,12 @@ export class AuthService {
 
     await employee.save();
 
+    await this.companyModel.findByIdAndUpdate(employee.company, {
+      $addToSet: { employees: employee._id },
+    });
+
     const authToken = this.jwtService.sign(
-      { id: employee._id },
+      { id: employee._id, role: 'employee' },
       { expiresIn: '1h' },
     );
 
@@ -209,7 +217,7 @@ export class AuthService {
     }
 
     const token = this.jwtService.sign(
-      { id: employee._id },
+      { id: employee._id, role: 'employee' },
       { expiresIn: '1h' },
     );
 
@@ -220,5 +228,26 @@ export class AuthService {
     return {
       message: 'New invitation link sent to employee email',
     };
+  }
+
+  async signInEmployee(email: string, password: string) {
+    const employee = await this.employeeModel
+      .findOne({ employeeEmail: email })
+      .select('+employeePassword');
+
+    if (!employee) throw new BadRequestException('Invalid credentials');
+
+    if (!employee.isActive)
+      throw new BadRequestException('Employee is not verified');
+
+    const isMatch = await bcrypt.compare(password, employee.employeePassword);
+    if (!isMatch) throw new BadRequestException('Invalid credentials');
+
+    const token = this.jwtService.sign(
+      { id: employee._id, role: 'employee' },
+      { expiresIn: '1h' },
+    );
+
+    return { token };
   }
 }
