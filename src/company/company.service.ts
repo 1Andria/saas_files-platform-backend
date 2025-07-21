@@ -57,22 +57,20 @@ export class CompanyService {
     return { message: 'Password changed successfully' };
   }
 
-  async update(companyId: string, updateCompanyDto: UpdateCompanyDto) {
+  async update(
+    companyId: string,
+    { country, industry, name }: UpdateCompanyDto,
+  ) {
     if (!isValidObjectId(companyId)) {
       throw new BadRequestException('Invalid ID provided');
     }
-    if (updateCompanyDto.email) {
-      const existingCompany = await this.companyModel.findOne({
-        companyEmail: updateCompanyDto.email.toLowerCase(),
-        _id: { $ne: companyId },
-      });
-      if (existingCompany) {
-        throw new BadRequestException('This email is already in use');
-      }
-    }
     const updatedCompany = await this.companyModel.findByIdAndUpdate(
       companyId,
-      updateCompanyDto,
+      {
+        companyCountry: country,
+        companyIndustry: industry,
+        companyName: name,
+      },
       { new: true },
     );
     if (!updatedCompany) {

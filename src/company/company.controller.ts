@@ -30,7 +30,7 @@ export class CompanyController {
     return this.companyService.findOne(id);
   }
 
-  @Patch('subscription')
+  @Patch('subscription-downgrade')
   @UseGuards(IsAuthGuard, CompanyOnlyGuard)
   changeSubscription(
     @CompanyId() companyId: string,
