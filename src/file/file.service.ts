@@ -41,26 +41,32 @@ export class FileService {
 
     await this.awsService.uploadFile(fileId, file);
 
-    const uploader = await this.employeeModel.findById(employeeId).populate({
-      path: 'company',
-      select: 'subscription.plan',
-    });
-
+    const uploader = await this.employeeModel.findById(employeeId);
     if (!uploader) throw new NotFoundException('Employee not found');
 
-    console.log(uploader.company);
+    const company = await this.companyModel
+      .findById(uploader.company)
+      .select('subscription.plan files');
 
-    //     {
-    //   _id: new ObjectId('68762f5de18d99c083a0c520'),
-    //   subscription: { plan: 'basic' }
-    // }
+    if (!company) throw new NotFoundException('Company not found');
+
+    const plan = company.subscription.plan;
+    const currentFilesCount = company.files.length;
+
+    if (plan === 'free' && currentFilesCount >= 10) {
+      throw new BadRequestException('Free plan allows only 10 files');
+    }
+
+    if (plan === 'basic' && currentFilesCount >= 100) {
+      throw new BadRequestException('Basic plan allows only 100 files');
+    }
 
     let whoCanSee: mongoose.Types.ObjectId[] | 'everyone' = 'everyone';
 
     if (visibleTo && visibleTo.length > 0) {
       const filteredEmployees = await this.employeeModel.find({
         employeeEmail: { $in: visibleTo },
-        company: uploader.company,
+        company: company._id,
       });
 
       if (filteredEmployees.length !== visibleTo.length) {
@@ -82,7 +88,7 @@ export class FileService {
       $push: { files: createdFile._id },
     });
 
-    await this.companyModel.findByIdAndUpdate(uploader.company, {
+    await this.companyModel.findByIdAndUpdate(company._id, {
       $push: { files: createdFile._id },
     });
 
