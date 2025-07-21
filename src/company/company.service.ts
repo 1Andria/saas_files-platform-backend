@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { InjectModel } from '@nestjs/mongoose';
-import { isValidObjectId, Model } from 'mongoose';
+import { isValidObjectId, Model, Types } from 'mongoose';
 import { Company } from './schema/company.schema';
 import * as bcrypt from 'bcrypt';
 import { ChangeCompanyPasswordDto } from './dto/change-company-password.dto';
@@ -99,5 +99,71 @@ export class CompanyService {
     };
   }
 
-  async deleteEmployee() {}
+  async deleteEmployee(employeeId: string, companyId: string) {
+    if (!isValidObjectId(employeeId) || !isValidObjectId(companyId))
+      throw new BadRequestException('Invalid ID provided');
+
+    const company = await this.companyModel.findById(companyId);
+    if (!company) throw new NotFoundException('Company not found');
+
+    const employee = await this.employeeModel.findById(employeeId);
+    if (!employee) throw new NotFoundException('Employee not found');
+
+    const employeeObjectId = new Types.ObjectId(employeeId);
+
+    if (!company.employees.includes(employeeObjectId))
+      throw new BadRequestException(
+        "You can only remove your own company's employee",
+      );
+
+    await this.employeeModel.findByIdAndDelete(employeeId);
+
+    await this.companyModel.updateOne(
+      { _id: companyId },
+      { $pull: { employees: employeeObjectId } },
+    );
+
+    return {
+      message: 'Employee deleted and unlinked from company successfully',
+    };
+  }
+
+  async changeSubscription(
+    companyId: string,
+    newPlan: 'free' | 'basic' | 'premium',
+  ) {
+    if (!['free', 'basic', 'premium'].includes(newPlan)) {
+      throw new BadRequestException('Invalid subscription plan');
+    }
+
+    if (newPlan === 'basic' || newPlan === 'premium') {
+      throw new BadRequestException(
+        `Use Stripe Checkout to upgrade to ${newPlan} plan`,
+      );
+    }
+
+    const company = await this.companyModel.findById(companyId);
+    if (company?.subscription.plan === 'free')
+      throw new BadRequestException('You already have free plan');
+
+    const updatedCompanyPlan = await this.companyModel.findByIdAndUpdate(
+      companyId,
+      {
+        $set: {
+          'subscription.plan': newPlan,
+          'subscription.activatedAt': null,
+        },
+      },
+      { new: true },
+    );
+
+    if (!updatedCompanyPlan) {
+      throw new BadRequestException('Something went wrong, try again');
+    }
+
+    return {
+      message: `Subscription downgraded to free plan`,
+      subscription: updatedCompanyPlan.subscription,
+    };
+  }
 }

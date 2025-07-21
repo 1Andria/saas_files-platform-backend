@@ -6,7 +6,6 @@ import { VerifyEmailDto } from './dto/verify-email.dto';
 import { IsAuthGuard } from './guard/isAuth.guard';
 import { CompanyId } from 'src/company/decorator/company.decorator';
 import { InviteEmployeeDto } from './dto/invite-employee.dto';
-import { ResendInviteDto } from './dto/resend-invite.dto';
 import { VerifyEmployeeDto } from './dto/verify-employee.dto';
 
 @Controller('auth')

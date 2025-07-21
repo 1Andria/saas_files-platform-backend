@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { EmailSenderModule } from './email-sender/email-sender.module';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { EmployeesModule } from './employees/employees.module';
+import { StripeModule } from './stripe/stripe.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { EmployeesModule } from './employees/employees.module';
     AuthModule,
     EmailSenderModule,
     EmployeesModule,
+    StripeModule,
   ],
   controllers: [AppController],
   providers: [AppService],

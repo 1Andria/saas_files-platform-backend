@@ -147,6 +147,18 @@ export class AuthService {
     if (existing)
       throw new BadRequestException('Employee already invited or registered');
 
+    const employeeCount = await this.employeeModel.countDocuments({
+      company: company._id,
+    });
+
+    const plan = company.subscription?.plan || 'free';
+
+    if (plan === 'free' && employeeCount >= 1)
+      throw new BadRequestException('Free plan allows only 1 employee');
+
+    if (plan === 'basic' && employeeCount >= 10)
+      throw new BadRequestException('Basic plan allows up to 10 employees');
+
     const employee = await this.employeeModel.create({
       employeeEmail,
       company: company._id,

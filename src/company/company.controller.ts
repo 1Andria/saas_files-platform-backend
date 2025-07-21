@@ -13,6 +13,8 @@ import { CompanyId } from './decorator/company.decorator';
 import { ChangeCompanyPasswordDto } from './dto/change-company-password.dto';
 import { IsAuthGuard } from '../auth/guard/isAuth.guard';
 import { CompanyOnlyGuard } from 'src/auth/guard/company-only.guard';
+import { RemoveEmployeeDto } from './dto/remove-employee.dto';
+import { ChangeSubscriptionDto } from './dto/change-subscription.dto';
 
 @Controller('company')
 export class CompanyController {
@@ -26,6 +28,15 @@ export class CompanyController {
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.companyService.findOne(id);
+  }
+
+  @Patch('subscription')
+  @UseGuards(IsAuthGuard, CompanyOnlyGuard)
+  changeSubscription(
+    @CompanyId() companyId: string,
+    @Body() dto: ChangeSubscriptionDto,
+  ) {
+    return this.companyService.changeSubscription(companyId, dto.plan);
   }
 
   @Patch('change-password')
@@ -44,6 +55,15 @@ export class CompanyController {
     @Body() updateCompanyDto: UpdateCompanyDto,
   ) {
     return this.companyService.update(companyId, updateCompanyDto);
+  }
+
+  @Delete('remove-employee')
+  @UseGuards(IsAuthGuard, CompanyOnlyGuard)
+  removeEmployee(
+    @CompanyId() companyId: string,
+    @Body() body: RemoveEmployeeDto,
+  ) {
+    return this.companyService.deleteEmployee(body.employeeId, companyId);
   }
 
   @Delete()
