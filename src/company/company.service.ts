@@ -10,10 +10,14 @@ import { Company } from './schema/company.schema';
 import * as bcrypt from 'bcrypt';
 import { ChangeCompanyPasswordDto } from './dto/change-company-password.dto';
 import { Employee } from 'src/employees/schema/employee.schema';
+import { File } from 'src/file/schema/file.schema';
+import { AwsService } from 'src/aws/aws.service';
 
 @Injectable()
 export class CompanyService {
   constructor(
+    private awsService: AwsService,
+    @InjectModel('file') private readonly fileModel: Model<File>,
     @InjectModel('company') private readonly companyModel: Model<Company>,
     @InjectModel('employee') private readonly employeeModel: Model<Employee>,
   ) {}
@@ -116,12 +120,30 @@ export class CompanyService {
         "You can only remove your own company's employee",
       );
 
-    await this.employeeModel.findByIdAndDelete(employeeId);
+    const uploadedFiles = await this.fileModel.find({
+      uploadedBy: employee._id,
+    });
+
+    for (const file of uploadedFiles) {
+      const fileExt = file.fileName.split('.').pop();
+      const fileId = `${file._id}.${fileExt}`;
+      await this.awsService.deleteFileById(fileId);
+    }
+
+    const fileIds = uploadedFiles.map((file) => file._id);
+    await this.fileModel.deleteMany({ _id: { $in: fileIds } });
 
     await this.companyModel.updateOne(
       { _id: companyId },
-      { $pull: { employees: employeeObjectId } },
+      {
+        $pull: {
+          employees: employeeObjectId,
+          files: { $in: fileIds },
+        },
+      },
     );
+
+    await this.employeeModel.findByIdAndDelete(employeeId);
 
     return {
       message: 'Employee deleted and unlinked from company successfully',

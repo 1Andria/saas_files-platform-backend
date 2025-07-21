@@ -9,12 +9,16 @@ import { Employee } from './schema/employee.schema';
 import { ChangeCompanyPasswordDto } from 'src/company/dto/change-company-password.dto';
 import * as bcrypt from 'bcrypt';
 import { Company } from 'src/company/schema/company.schema';
+import { File } from 'src/file/schema/file.schema';
+import { AwsService } from 'src/aws/aws.service';
 
 @Injectable()
 export class EmployeesService {
   constructor(
+    private awsService: AwsService,
     @InjectModel('employee') private readonly employeeModel: Model<Employee>,
     @InjectModel('company') private readonly companyModel: Model<Company>,
+    @InjectModel('file') private readonly fileModel: Model<File>,
   ) {}
 
   findAll() {
@@ -36,6 +40,19 @@ export class EmployeesService {
     if (!employee) {
       throw new NotFoundException('Employee not found');
     }
+
+    const uploadedFiles = await this.fileModel.find({
+      uploadedBy: employee._id,
+    });
+
+    for (const file of uploadedFiles) {
+      const fileExt = file.fileName.split('.').pop();
+      const fileId = `${file._id}.${fileExt}`;
+      await this.awsService.deleteFileById(fileId);
+    }
+
+    const fileIds = uploadedFiles.map((file) => file._id);
+    await this.fileModel.deleteMany({ _id: { $in: fileIds } });
 
     const deletedEmployee =
       await this.employeeModel.findByIdAndDelete(employeeId);
