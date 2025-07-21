@@ -3,8 +3,6 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { CreateEmployeeDto } from './dto/create-employee.dto';
-import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { isValidObjectId, Model } from 'mongoose';
 import { Employee } from './schema/employee.schema';
@@ -18,9 +16,6 @@ export class EmployeesService {
     @InjectModel('employee') private readonly employeeModel: Model<Employee>,
     @InjectModel('company') private readonly companyModel: Model<Company>,
   ) {}
-  create(createEmployeeDto: CreateEmployeeDto) {
-    return 'This action adds a new employee';
-  }
 
   findAll() {
     return this.employeeModel
@@ -30,10 +25,6 @@ export class EmployeesService {
 
   findOne(id: number) {
     return `This action returns a #${id} employee`;
-  }
-
-  update(id: number, updateEmployeeDto: UpdateEmployeeDto) {
-    return `This action updates a #${id} employee`;
   }
 
   async remove(employeeId: string) {

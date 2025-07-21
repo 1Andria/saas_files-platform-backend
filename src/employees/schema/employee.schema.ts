@@ -1,6 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import mongoose, { Types } from 'mongoose';
-import { Company } from 'src/company/schema/company.schema';
 
 @Schema({ timestamps: true })
 export class Employee {
@@ -19,10 +18,10 @@ export class Employee {
     ref: 'company',
     required: true,
   })
-  company: Types.ObjectId | Company;
+  company: mongoose.Schema.Types.ObjectId ;
 
-  @Prop({ type: [String], default: [] })
-  files: string[];
+  @Prop({ type: [mongoose.Schema.Types.ObjectId], default: [], ref: 'file' })
+  files: mongoose.Schema.Types.ObjectId[];
 
   @Prop({ default: false })
   isActive: boolean;
