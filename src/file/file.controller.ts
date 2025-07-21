@@ -3,12 +3,12 @@ import {
   Get,
   Post,
   Body,
-  Patch,
   Param,
   Delete,
   UseGuards,
   UseInterceptors,
   UploadedFile,
+  Patch,
 } from '@nestjs/common';
 import { FileService } from './file.service';
 import { IsAuthGuard } from 'src/auth/guard/isAuth.guard';
@@ -38,5 +38,29 @@ export class FileController {
     @EmployeeId() employeeId: string,
   ) {
     return this.fileService.deleteFile(fileId, employeeId);
+  }
+
+  @Get('company/:companyId')
+  async getCompanyFiles(@Param('companyId') companyId: string) {
+    return this.fileService.getFilesByCompany(companyId);
+  }
+
+  @Get('employee/:employeeId')
+  async getEmployeeFiles(@Param('employeeId') employeeId: string) {
+    return this.fileService.getFilesForEmployee(employeeId);
+  }
+
+  @Patch(':fileId/permissions')
+  @UseGuards(IsAuthGuard, EmployeeOnlyGuard)
+  updateFilePermissions(
+    @Param('fileId') fileId: string,
+    @Body('visibleTo') visibleTo: string[],
+    @EmployeeId() employeeId: string,
+  ) {
+    return this.fileService.updateFilePermissions(
+      fileId,
+      employeeId,
+      visibleTo,
+    );
   }
 }

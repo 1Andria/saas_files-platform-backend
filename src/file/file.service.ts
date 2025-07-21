@@ -6,7 +6,7 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 import { AwsService } from 'src/aws/aws.service';
 import { InjectModel } from '@nestjs/mongoose';
-import mongoose, { Model } from 'mongoose';
+import mongoose, { isValidObjectId, Model, Types } from 'mongoose';
 import { File } from './schema/file.schema';
 import { Employee } from 'src/employees/schema/employee.schema';
 import { Company } from 'src/company/schema/company.schema';
@@ -127,5 +127,92 @@ export class FileService {
       message: 'File deleted successfully',
       fileId,
     };
+  }
+
+  async getFilesByCompany(companyId: string) {
+    if (!isValidObjectId(companyId)) {
+      throw new BadRequestException('Invalid company ID');
+    }
+    const employees = await this.employeeModel.find(
+      { company: companyId },
+      '_id',
+    );
+    const employeeIds = employees.map((e) => e._id);
+
+    const files = await this.fileModel
+      .find({ uploadedBy: { $in: employeeIds } })
+      .sort({ createdAt: -1 });
+
+    return { files };
+  }
+
+  async getFilesForEmployee(employeeId: string) {
+    if (!isValidObjectId(employeeId)) {
+      throw new BadRequestException('Invalid employee ID');
+    }
+    const employee = await this.employeeModel.findById(employeeId);
+    if (!employee) {
+      throw new NotFoundException('Employee not found');
+    }
+
+    const files = await this.fileModel
+      .find({
+        $or: [
+          { whoCanSee: 'everyone' },
+          { whoCanSee: new Types.ObjectId(employee._id) },
+        ],
+      })
+      .sort({ createdAt: -1 });
+
+    return { files };
+  }
+
+  async updateFilePermissions(
+    fileId: string,
+    employeeId: string,
+    visibleTo?: string[] | 'everyone',
+  ) {
+    if (!isValidObjectId(fileId)) {
+      throw new BadRequestException('Invalid file ID');
+    }
+
+    const file = await this.fileModel.findById(fileId);
+    if (!file) {
+      throw new NotFoundException('File not found');
+    }
+
+    if (file.uploadedBy.toString() !== employeeId.toString()) {
+      throw new BadRequestException('You are not allowed to edit this file');
+    }
+
+    if (visibleTo === 'everyone' || !visibleTo || visibleTo.length === 0) {
+      file.whoCanSee = 'everyone';
+      await file.save();
+      return { message: 'File visibility updated to everyone' };
+    }
+
+    const uploader = await this.employeeModel
+      .findById(employeeId)
+      .select('company');
+
+    if (!uploader)
+      throw new BadRequestException('Something went wrong try again');
+
+    const validEmployees = await this.employeeModel.find({
+      employeeEmail: { $in: visibleTo },
+      company: uploader.company,
+    });
+
+    if (validEmployees.length !== visibleTo.length) {
+      throw new BadRequestException(
+        'Some emails are invalid or not in your company',
+      );
+    }
+
+    const allowedIds = validEmployees.map((emp) => emp._id);
+    file.whoCanSee = allowedIds as any;
+    await file.save();
+
+    return { message: 'File visibility updated', whoCanSee: visibleTo };
   }
 }
