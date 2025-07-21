@@ -90,15 +90,35 @@ export class CompanyService {
       throw new BadRequestException('Invalid ID provided');
     }
 
-    const company = await this.companyModel.findById(companyId);
+    const company = await this.companyModel
+      .findById(companyId)
+      .populate('employees files');
+
     if (!company) {
       throw new NotFoundException('Requesting company not found');
+    }
+
+    const employeeIds = company.employees.map((emp: any) => emp._id);
+    await this.employeeModel.deleteMany({ _id: { $in: employeeIds } });
+
+    const files = company.files;
+
+    if (files.length > 0) {
+      await Promise.all(
+        files.map(async (file: any) => {
+          await this.awsService.deleteFileById(file.fileName);
+        }),
+      );
+      await this.fileModel.deleteMany({
+        _id: { $in: files.map((f: any) => f._id) },
+      });
     }
 
     const deletedCompany = await this.companyModel.findByIdAndDelete(companyId);
 
     return {
-      message: 'Company account deleted successfully',
+      message:
+        'Company account, employees and uploaded files deleted successfully',
       deletedCompany,
     };
   }
