@@ -170,42 +170,67 @@ export class CompanyService {
     };
   }
 
-  async changeSubscription(
-    companyId: string,
-    newPlan: 'free' | 'basic' | 'premium',
-  ) {
-    if (!['free', 'basic', 'premium'].includes(newPlan)) {
+  async subscriptionDowngrade(companyId: string, newPlan: 'free' | 'basic') {
+    if (!['free', 'basic'].includes(newPlan)) {
       throw new BadRequestException('Invalid subscription plan');
     }
 
-    if (newPlan === 'basic' || newPlan === 'premium') {
-      throw new BadRequestException(
-        `Use Stripe Checkout to upgrade to ${newPlan} plan`,
-      );
+    const company = await this.companyModel
+      .findById(companyId)
+      .populate('employees')
+      .populate('files');
+
+    if (!company) {
+      throw new NotFoundException('Company not found');
     }
 
-    const company = await this.companyModel.findById(companyId);
-    if (company?.subscription.plan === 'free')
-      throw new BadRequestException('You already have free plan');
+    const currentPlan = company.subscription.plan;
 
-    const updatedCompanyPlan = await this.companyModel.findByIdAndUpdate(
-      companyId,
-      {
-        $set: {
-          'subscription.plan': newPlan,
-          'subscription.activatedAt': null,
-        },
+    if (newPlan === currentPlan) {
+      throw new BadRequestException(`You already have ${newPlan} plan`);
+    }
+
+    if (currentPlan === 'free') {
+      throw new BadRequestException('You are already on free plan');
+    }
+
+    let maxEmployees = 10;
+    let maxFiles = 100;
+
+    if (newPlan === 'free') {
+      maxEmployees = 1;
+      maxFiles = 10;
+    }
+
+    const employeeIds = company.employees
+      .slice(0, maxEmployees)
+      .map((e) => e._id);
+    await this.employeeModel.deleteMany({
+      _id: { $nin: employeeIds },
+      company: company._id,
+    });
+
+    const fileIds = company.files.slice(0, maxFiles).map((f) => f._id);
+    await this.fileModel.deleteMany({
+      _id: { $nin: fileIds },
+      uploadedBy: { $in: employeeIds },
+    });
+
+    await this.companyModel.findByIdAndUpdate(companyId, {
+      employees: employeeIds,
+      files: fileIds,
+      subscription: {
+        plan: newPlan,
+        activatedAt: null,
       },
-      { new: true },
-    );
-
-    if (!updatedCompanyPlan) {
-      throw new BadRequestException('Something went wrong, try again');
-    }
+    });
 
     return {
-      message: `Subscription downgraded to free plan`,
-      subscription: updatedCompanyPlan.subscription,
+      message: `Subscription downgraded to ${newPlan} plan`,
+      subscription: {
+        plan: newPlan,
+        activatedAt: null,
+      },
     };
   }
 }

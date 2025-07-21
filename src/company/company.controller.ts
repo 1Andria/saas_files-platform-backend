@@ -36,7 +36,7 @@ export class CompanyController {
     @CompanyId() companyId: string,
     @Body() dto: ChangeSubscriptionDto,
   ) {
-    return this.companyService.changeSubscription(companyId, dto.plan);
+    return this.companyService.subscriptionDowngrade(companyId, dto.plan);
   }
 
   @Patch('change-password')
