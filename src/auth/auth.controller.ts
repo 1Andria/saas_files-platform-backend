@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { signUpDto } from './dto/sign-up.dto';
 import { SignInDto } from './dto/sign-in.dto';
@@ -7,6 +7,7 @@ import { IsAuthGuard } from './guard/isAuth.guard';
 import { CompanyId } from 'src/company/decorator/company.decorator';
 import { InviteEmployeeDto } from './dto/invite-employee.dto';
 import { VerifyEmployeeDto } from './dto/verify-employee.dto';
+import { CurrentUser } from './decorator/current-user.decorator';
 
 @Controller('auth')
 export class AuthController {
@@ -58,5 +59,13 @@ export class AuthController {
   @Post('sign-in-employee')
   signInEmployee(@Body() { email, password }: SignInDto) {
     return this.authService.signInEmployee(email, password);
+  }
+
+  @Get('current-user')
+  @UseGuards(IsAuthGuard)
+  getCurrentUser(
+    @CurrentUser() user: { id: string; role: 'employee' | 'company' },
+  ) {
+    return this.authService.getCurrentUser(user.id, user.role);
   }
 }

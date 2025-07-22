@@ -262,4 +262,20 @@ export class AuthService {
 
     return { token };
   }
+
+  async getCurrentUser(userId: string, role: 'employee' | 'company') {
+    if (role === 'company') {
+      const company = await this.companyModel.findById(userId);
+      if (!company) throw new NotFoundException('Company not found');
+      return company;
+    }
+
+    if (role === 'employee') {
+      const employee = await this.employeeModel.findById(userId);
+      if (!employee) throw new NotFoundException('Employee not found');
+      return employee;
+    }
+
+    throw new BadRequestException('Invalid role');
+  }
 }
