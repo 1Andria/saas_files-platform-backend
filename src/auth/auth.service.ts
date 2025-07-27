@@ -165,12 +165,15 @@ export class AuthService {
       isActive: false,
     });
 
+    company.employees.push(employee._id);
+    await company.save();
+
     const token = this.jwtService.sign(
       { id: employee._id, role: 'employee' },
       { expiresIn: '1h' },
     );
 
-    const inviteLink = `${process.env.FRONT_URL}/verify-employee?token=${token}`;
+    const inviteLink = `${process.env.FRONT_URL}/auth/verify-employee?token=${token}`;
 
     await this.emailSenderService.sendInviteLink(employeeEmail, inviteLink);
 
@@ -211,37 +214,6 @@ export class AuthService {
     return { token: authToken, message: 'Employee verified successfully' };
   }
 
-  async resendInviteToEmployee(companyId: string, employeeEmail: string) {
-    const employee = await this.employeeModel.findOne({ employeeEmail });
-
-    if (!employee) {
-      throw new NotFoundException('Employee not found');
-    }
-
-    if (employee.isActive) {
-      throw new BadRequestException('Employee is already verified');
-    }
-
-    if (employee.company.toString() !== companyId) {
-      throw new BadRequestException(
-        'You can only resend invite to your own employee',
-      );
-    }
-
-    const token = this.jwtService.sign(
-      { id: employee._id, role: 'employee' },
-      { expiresIn: '1h' },
-    );
-
-    const inviteLink = `${process.env.FRONT_URL}/verify-employee?token=${token}`;
-
-    await this.emailSenderService.sendInviteLink(employeeEmail, inviteLink);
-
-    return {
-      message: 'New invitation link sent to employee email',
-    };
-  }
-
   async signInEmployee(email: string, password: string) {
     const employee = await this.employeeModel
       .findOne({ employeeEmail: email })
@@ -265,13 +237,24 @@ export class AuthService {
 
   async getCurrentUser(userId: string, role: 'employee' | 'company') {
     if (role === 'company') {
-      const company = await this.companyModel.findById(userId);
+      const company = await this.companyModel
+        .findById(userId)
+        .populate({ path: 'employees' })
+        .populate({
+          path: 'files',
+          populate: {
+            path: 'uploadedBy',
+            select: 'employeeEmail',
+          },
+        });
       if (!company) throw new NotFoundException('Company not found');
       return company;
     }
 
     if (role === 'employee') {
-      const employee = await this.employeeModel.findById(userId);
+      const employee = await this.employeeModel
+        .findById(userId)
+        .populate({ path: 'company', select: 'companyName' });
       if (!employee) throw new NotFoundException('Employee not found');
       return employee;
     }

@@ -47,15 +47,6 @@ export class AuthController {
     return this.authService.verifyEmployee(dto.token, dto.password);
   }
 
-  @Post('resend-invite')
-  @UseGuards(IsAuthGuard)
-  resendInviteToEmployee(
-    @Body('email') employeeEmail: string,
-    @CompanyId() companyId: string,
-  ) {
-    return this.authService.resendInviteToEmployee(companyId, employeeEmail);
-  }
-
   @Post('sign-in-employee')
   signInEmployee(@Body() { email, password }: SignInDto) {
     return this.authService.signInEmployee(email, password);

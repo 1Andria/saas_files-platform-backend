@@ -21,16 +21,6 @@ export class EmployeesService {
     @InjectModel('file') private readonly fileModel: Model<File>,
   ) {}
 
-  findAll() {
-    return this.employeeModel
-      .find()
-      .populate({ path: 'company', select: 'companyName' });
-  }
-
-  findOne(id: number) {
-    return `This action returns a #${id} employee`;
-  }
-
   async remove(employeeId: string) {
     if (!isValidObjectId(employeeId)) {
       throw new BadRequestException('Invalid ID provided');

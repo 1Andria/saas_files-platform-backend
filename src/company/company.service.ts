@@ -121,6 +121,41 @@ export class CompanyService {
     };
   }
 
+  async deleteFileByCompany(fileId: string, companyId: string) {
+    if (!fileId || !isValidObjectId(fileId))
+      throw new BadRequestException('Invalid file ID');
+
+    const company = await this.companyModel.findById(companyId);
+    if (!company) throw new NotFoundException('Company not found');
+
+    const file = await this.fileModel.findById(fileId);
+    if (!file) throw new NotFoundException('File not found');
+
+    if (!company.files.includes(file._id)) {
+      throw new BadRequestException(
+        'This file does not belong to your company',
+      );
+    }
+
+    const fileKey = file.fileName.includes('.') ? file.fileName : `${file._id}`;
+    await this.awsService.deleteFileById(fileKey);
+
+    await this.fileModel.findByIdAndDelete(fileId);
+
+    await this.companyModel.findByIdAndUpdate(companyId, {
+      $pull: { files: file._id },
+    });
+
+    await this.employeeModel.findByIdAndUpdate(file.uploadedBy, {
+      $pull: { files: file._id },
+    });
+
+    return {
+      message: 'File deleted successfully by company',
+      fileId,
+    };
+  }
+
   async deleteEmployee(employeeId: string, companyId: string) {
     if (!isValidObjectId(employeeId) || !isValidObjectId(companyId))
       throw new BadRequestException('Invalid ID provided');
@@ -168,11 +203,7 @@ export class CompanyService {
     };
   }
 
-  async subscriptionDowngrade(companyId: string, newPlan: 'free' | 'basic') {
-    if (!['free', 'basic'].includes(newPlan)) {
-      throw new BadRequestException('Invalid subscription plan');
-    }
-
+  async subscriptionDowngrade(companyId: string) {
     const company = await this.companyModel
       .findById(companyId)
       .populate('employees')
@@ -182,51 +213,44 @@ export class CompanyService {
       throw new NotFoundException('Company not found');
     }
 
-    const currentPlan = company.subscription.plan;
-
-    if (newPlan === currentPlan) {
-      throw new BadRequestException(`You already have ${newPlan} plan`);
+    if (company.subscription.plan === 'free') {
+      throw new BadRequestException('You already have free plan');
     }
 
-    if (currentPlan === 'free') {
-      throw new BadRequestException('You are already on free plan');
-    }
+    const maxEmployees = 1;
+    const maxFiles = 10;
 
-    let maxEmployees = 10;
-    let maxFiles = 100;
-
-    if (newPlan === 'free') {
-      maxEmployees = 1;
-      maxFiles = 10;
-    }
-
-    const employeeIds = company.employees
+    const employeeIdsToKeep = company.employees
       .slice(0, maxEmployees)
       .map((e) => e._id);
+    const employeeIdsToDelete = company.employees
+      .slice(maxEmployees)
+      .map((e) => e._id);
+
+    const fileIdsToKeep = company.files.slice(0, maxFiles).map((f) => f._id);
+    const fileIdsToDelete = company.files.slice(maxFiles).map((f) => f._id);
+
     await this.employeeModel.deleteMany({
-      _id: { $nin: employeeIds },
-      company: company._id,
+      _id: { $in: employeeIdsToDelete },
     });
 
-    const fileIds = company.files.slice(0, maxFiles).map((f) => f._id);
     await this.fileModel.deleteMany({
-      _id: { $nin: fileIds },
-      uploadedBy: { $in: employeeIds },
+      _id: { $in: fileIdsToDelete },
     });
 
     await this.companyModel.findByIdAndUpdate(companyId, {
-      employees: employeeIds,
-      files: fileIds,
+      employees: employeeIdsToKeep,
+      files: fileIdsToKeep,
       subscription: {
-        plan: newPlan,
+        plan: 'free',
         activatedAt: null,
       },
     });
 
     return {
-      message: `Subscription downgraded to ${newPlan} plan`,
+      message: 'Subscription downgraded to free plan',
       subscription: {
-        plan: newPlan,
+        plan: 'free',
         activatedAt: null,
       },
     };

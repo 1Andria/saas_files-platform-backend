@@ -14,7 +14,6 @@ import { ChangeCompanyPasswordDto } from './dto/change-company-password.dto';
 import { IsAuthGuard } from '../auth/guard/isAuth.guard';
 import { CompanyOnlyGuard } from 'src/auth/guard/company-only.guard';
 import { RemoveEmployeeDto } from './dto/remove-employee.dto';
-import { ChangeSubscriptionDto } from './dto/change-subscription.dto';
 
 @Controller('company')
 export class CompanyController {
@@ -32,11 +31,8 @@ export class CompanyController {
 
   @Patch('subscription-downgrade')
   @UseGuards(IsAuthGuard, CompanyOnlyGuard)
-  changeSubscription(
-    @CompanyId() companyId: string,
-    @Body() dto: ChangeSubscriptionDto,
-  ) {
-    return this.companyService.subscriptionDowngrade(companyId, dto.plan);
+  changeSubscription(@CompanyId() companyId: string) {
+    return this.companyService.subscriptionDowngrade(companyId);
   }
 
   @Patch('change-password')
@@ -55,6 +51,15 @@ export class CompanyController {
     @Body() updateCompanyDto: UpdateCompanyDto,
   ) {
     return this.companyService.update(companyId, updateCompanyDto);
+  }
+
+  @Delete('delete-file/:fileId')
+  @UseGuards(IsAuthGuard, CompanyOnlyGuard)
+  async deleteFileByCompany(
+    @Param('fileId') fileId: string,
+    @CompanyId() companyId: string,
+  ) {
+    return this.companyService.deleteFileByCompany(fileId, companyId);
   }
 
   @Delete('remove-employee')

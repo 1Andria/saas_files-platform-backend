@@ -1,17 +1,16 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import mongoose from 'mongoose';
-import { Employee } from 'src/employees/schema/employee.schema';
 
 @Schema({ timestamps: true })
 export class File {
   @Prop({ type: String, required: true })
   fileName: string;
 
-  @Prop({
-    type: mongoose.Schema.Types.Mixed,
-    required: true,
-  })
-  whoCanSee: mongoose.Schema.Types.ObjectId[] | 'everyone';
+  @Prop({ type: String, required: true })
+  fileId: string;
+
+  @Prop({ type: [mongoose.Types.ObjectId], ref: 'employee', default: [] })
+  whoCanSee: mongoose.Types.ObjectId[];
 
   @Prop({ type: String, required: true })
   mimeType: string;

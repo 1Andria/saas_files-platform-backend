@@ -7,17 +7,55 @@ import Stripe from 'stripe';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Company } from 'src/company/schema/company.schema';
+import { Employee } from 'src/employees/schema/employee.schema';
 
 @Injectable()
 export class StripeService {
   private stripe: Stripe;
 
-  constructor(@InjectModel('company') private companyModel: Model<Company>) {
+  constructor(
+    @InjectModel('file') private readonly fileModel: Model<File>,
+    @InjectModel('company') private readonly companyModel: Model<Company>,
+    @InjectModel('employee') private readonly employeeModel: Model<Employee>,
+  ) {
     this.stripe = new Stripe(process.env.STRIPE_API_KEY!);
   }
   async createCheckoutSession(plan: 'basic' | 'premium', companyId: string) {
-    const company = await this.companyModel.findById(companyId);
+    const company = await this.companyModel
+      .findById(companyId)
+      .populate('employees')
+      .populate('files');
+
     if (!company) throw new NotFoundException('Company not found');
+
+    const currentPlan = company.subscription?.plan;
+    const isDowngradeFromPremium =
+      currentPlan === 'premium' && plan === 'basic';
+
+    if (isDowngradeFromPremium) {
+      const maxEmployees = 10;
+      const maxFiles = 100;
+
+      const employeeIdsToKeep = company.employees
+        .slice(0, maxEmployees)
+        .map((e) => e._id);
+      const employeeIdsToDelete = company.employees
+        .slice(maxEmployees)
+        .map((e) => e._id);
+
+      const fileIdsToKeep = company.files.slice(0, maxFiles).map((f) => f._id);
+      const fileIdsToDelete = company.files.slice(maxFiles).map((f) => f._id);
+
+      await this.employeeModel.deleteMany({
+        _id: { $in: employeeIdsToDelete },
+      });
+      await this.fileModel.deleteMany({ _id: { $in: fileIdsToDelete } });
+
+      await this.companyModel.findByIdAndUpdate(companyId, {
+        employees: employeeIdsToKeep,
+        files: fileIdsToKeep,
+      });
+    }
 
     const priceId =
       plan === 'basic'
@@ -32,8 +70,8 @@ export class StripeService {
       mode: 'subscription',
       customer: customer.id,
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${process.env.FRONT_URL}?success=true`,
-      cancel_url: `${process.env.FRONT_URL}?cancel=true`,
+      success_url: `${process.env.FRONT_URL}/dashboard?tab=profile&success=true`,
+      cancel_url: `${process.env.FRONT_URL}/dashboard?tab=profile&success=false`,
     });
 
     return { url: session.url };

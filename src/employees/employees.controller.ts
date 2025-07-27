@@ -18,16 +18,6 @@ import { ChangeCompanyPasswordDto } from 'src/company/dto/change-company-passwor
 export class EmployeesController {
   constructor(private readonly employeesService: EmployeesService) {}
 
-  @Get()
-  findAll() {
-    return this.employeesService.findAll();
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.employeesService.findOne(+id);
-  }
-
   @Patch('change-password')
   @UseGuards(IsAuthGuard, EmployeeOnlyGuard)
   changePassword(

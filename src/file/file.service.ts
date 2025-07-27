@@ -61,7 +61,7 @@ export class FileService {
       throw new BadRequestException('Basic plan allows only 100 files');
     }
 
-    let whoCanSee: mongoose.Types.ObjectId[] | 'everyone' = 'everyone';
+    let whoCanSee: mongoose.Types.ObjectId[] = [];
 
     if (visibleTo && visibleTo.length > 0) {
       const filteredEmployees = await this.employeeModel.find({
@@ -70,7 +70,9 @@ export class FileService {
       });
 
       if (filteredEmployees.length !== visibleTo.length) {
-        throw new BadRequestException('Some emails are invalid');
+        throw new BadRequestException(
+          'Some emails are invalid or not in the company',
+        );
       }
 
       whoCanSee = filteredEmployees.map((emp) => emp._id);
@@ -82,6 +84,7 @@ export class FileService {
       size: file.size,
       uploadedBy: employeeId,
       whoCanSee,
+      fileId,
     });
 
     await this.employeeModel.findByIdAndUpdate(employeeId, {
@@ -135,22 +138,7 @@ export class FileService {
     };
   }
 
-  async getFilesByCompany(companyId: string) {
-    if (!isValidObjectId(companyId)) {
-      throw new BadRequestException('Invalid company ID');
-    }
-    const employees = await this.employeeModel.find(
-      { company: companyId },
-      '_id',
-    );
-    const employeeIds = employees.map((e) => e._id);
-
-    const files = await this.fileModel
-      .find({ uploadedBy: { $in: employeeIds } })
-      .sort({ createdAt: -1 });
-
-    return { files };
-  }
+  
 
   async getFilesForEmployee(employeeId: string) {
     if (!isValidObjectId(employeeId)) {
@@ -164,10 +152,12 @@ export class FileService {
     const files = await this.fileModel
       .find({
         $or: [
-          { whoCanSee: 'everyone' },
+          { whoCanSee: { $size: 0 } },
           { whoCanSee: new Types.ObjectId(employee._id) },
+          { uploadedBy: new Types.ObjectId(employee._id) },
         ],
       })
+      .populate({ path: 'whoCanSee', select: 'employeeEmail' })
       .sort({ createdAt: -1 });
 
     return { files };
@@ -176,7 +166,7 @@ export class FileService {
   async updateFilePermissions(
     fileId: string,
     employeeId: string,
-    visibleTo?: string[] | 'everyone',
+    visibleTo?: string[],
   ) {
     if (!isValidObjectId(fileId)) {
       throw new BadRequestException('Invalid file ID');
@@ -191,34 +181,40 @@ export class FileService {
       throw new BadRequestException('You are not allowed to edit this file');
     }
 
-    if (visibleTo === 'everyone' || !visibleTo || visibleTo.length === 0) {
-      file.whoCanSee = 'everyone';
-      await file.save();
-      return { message: 'File visibility updated to everyone' };
-    }
-
     const uploader = await this.employeeModel
       .findById(employeeId)
       .select('company');
 
-    if (!uploader)
-      throw new BadRequestException('Something went wrong try again');
+    if (!uploader) throw new BadRequestException('Uploader not found');
 
-    const validEmployees = await this.employeeModel.find({
+    if (!visibleTo || visibleTo.length === 0) {
+      file.whoCanSee = [];
+      await file.save();
+      return { message: 'File visibility updated to everyone' };
+    }
+
+    const filteredEmployees = await this.employeeModel.find({
       employeeEmail: { $in: visibleTo },
       company: uploader.company,
     });
 
-    if (validEmployees.length !== visibleTo.length) {
+    if (filteredEmployees.length !== visibleTo.length) {
+      const foundEmails = filteredEmployees.map((e) => e.employeeEmail);
+      const invalidEmails = visibleTo.filter(
+        (email) => !foundEmails.includes(email),
+      );
       throw new BadRequestException(
-        'Some emails are invalid or not in your company',
+        `Some emails are invalid or not in the company: ${invalidEmails.join(', ')}`,
       );
     }
 
-    const allowedIds = validEmployees.map((emp) => emp._id);
-    file.whoCanSee = allowedIds as any;
+    const allowedIds = filteredEmployees.map((emp) => emp._id);
+    file.whoCanSee = allowedIds;
     await file.save();
 
-    return { message: 'File visibility updated', whoCanSee: visibleTo };
+    return {
+      message: 'File visibility updated',
+      whoCanSee: visibleTo,
+    };
   }
 }

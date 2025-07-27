@@ -32,7 +32,7 @@ export class FileController {
   }
 
   @Delete(':fileId')
-  @UseGuards(IsAuthGuard)
+  @UseGuards(IsAuthGuard, EmployeeOnlyGuard)
   deleteFile(
     @Param('fileId') fileId: string,
     @EmployeeId() employeeId: string,
@@ -40,13 +40,9 @@ export class FileController {
     return this.fileService.deleteFile(fileId, employeeId);
   }
 
-  @Get('company/:companyId')
-  async getCompanyFiles(@Param('companyId') companyId: string) {
-    return this.fileService.getFilesByCompany(companyId);
-  }
-
   @Get('employee/:employeeId')
-  async getEmployeeFiles(@Param('employeeId') employeeId: string) {
+  @UseGuards(IsAuthGuard, EmployeeOnlyGuard)
+  async getEmployeeFiles(@EmployeeId() employeeId: string) {
     return this.fileService.getFilesForEmployee(employeeId);
   }
 
