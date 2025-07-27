@@ -16,13 +16,13 @@ let AwsService = class AwsService {
     bucketName;
     s3;
     constructor() {
-        this.bucketName = process.env.AWS_BUCKET_NAME;
+        this.bucketName = process.env.MY_AWS_BUCKET_NAME;
         this.s3 = new client_s3_1.S3Client({
             credentials: {
-                accessKeyId: process.env.AWS_ACCESS_KEY,
-                secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+                accessKeyId: process.env.MY_AWS_ACCESS_KEY,
+                secretAccessKey: process.env.MY_AWS_SECRET_ACCESS_KEY,
             },
-            region: process.env.AWS_REGION,
+            region: process.env.MY_AWS_REGION,
         });
     }
     async uploadFile(fileId, file) {
