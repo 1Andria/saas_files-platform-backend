@@ -41,7 +41,7 @@ export class EmailSenderService {
     try {
       await this.mailerService.sendMail({
         to,
-        from: 'SWIPT_FILE <andriamelua22@gmail.com>',
+        from: 'File_Controller <andriamelua22@gmail.com>',
         subject: 'Your OTP Code',
         html: htmlTemplate,
       });
